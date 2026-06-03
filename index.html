@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>本地图库</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{padding:30px;max-width:1200px;margin:0 auto}
+        .search-box{margin-bottom:30px;text-align:center}
+        #search{padding:10px 15px;width:400px;font-size:16px;border:1px solid #ccc;border-radius:6px}
+        .box{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
+        .item{border:1px solid #eee;padding:10px;border-radius:8px;cursor:pointer}
+        .item img{width:100%;height:180px;object-fit:cover;display:block}
+        .name{text-align:center;margin-top:8px;font-size:15px}
+
+        /* 弹窗放大样式 */
+        .mask{
+            position: fixed;
+            top:0;left:0;
+            width:100%;height:100%;
+            background:rgba(0,0,0,0.85);
+            display:none;
+            z-index:999;
+            align-items:center;
+            justify-content:center;
+        }
+        .mask.active{
+            display:flex;
+        }
+        #bigImg{
+            max-width:90%;
+            max-height:90vh;
+            /* 缩放拖拽顺滑过渡 */
+            transition: transform 0.05s ease-out;
+            cursor: grab;
+        }
+        #bigImg:active{
+            cursor: grabbing;
+        }
+    </style>
+</head>
+<body>
+    <div class="search-box">
+        <input type="text" id="search" placeholder="输入图片名称搜索...">
+    </div>
+    <div class="box" id="list"></div>
+
+    <!-- 放大弹窗容器 -->
+    <div class="mask" id="bigMask">
+        <img id="bigImg" src="">
+    </div>
+
+    <script>
+        // 图片数据
+        let imgArr = [
+            {src:'img/ws.jpg',name:'小狗'},
+            {src:'img/whw.jpg',name:'猫咪'},
+            {src:'img/whb.jpg',name:'小鸟'}
+        ]
+
+        let list = document.getElementById('list')
+        let input = document.getElementById('search')
+        let mask = document.getElementById('bigMask')
+        let bigImg = document.getElementById('bigImg')
+
+        // 缩放、拖拽参数
+        let scaleNum = 1;
+        const scaleStep = 0.05; // 缩小缩放步长，滚轮更丝滑
+        const minScale = 0.3;
+        const maxScale = 3;
+
+        // 拖拽坐标
+        let moveX = 0;
+        let moveY = 0;
+        let isDrag = false;
+        let startX, startY;
+
+        // 渲染图片
+        function render(arr){
+            list.innerHTML = ''
+            arr.forEach(item=>{
+                let div = document.createElement('div')
+                div.className = 'item'
+                div.innerHTML = `
+                    <img src="${item.src}" alt="${item.name}">
+                    <div class="name">${item.name}</div>
+                `
+                // 点击弹窗，重置缩放+拖拽位置
+                div.onclick = function(){
+                    scaleNum = 1;
+                    moveX = 0;
+                    moveY = 0;
+                    updateImgTransform()
+                    bigImg.src = item.src
+                    mask.classList.add('active')
+                }
+                list.appendChild(div)
+            })
+        }
+        render(imgArr)
+
+        // 更新图片transform
+        function updateImgTransform(){
+            bigImg.style.transform = `translate(${moveX}px,${moveY}px) scale(${scaleNum})`
+        }
+
+        // 点击遮罩空白关闭
+        mask.onclick = function(e){
+            if(e.target === mask){
+                mask.classList.remove('active')
+            }
+        }
+
+        // ========== 拖拽逻辑 ==========
+        bigImg.onmousedown = function(e){
+            isDrag = true
+            startX = e.clientX - moveX
+            startY = e.clientY - moveY
+            bigImg.style.transition = 'none' // 拖拽时取消过渡不卡顿
+        }
+        document.onmousemove = function(e){
+            if(!isDrag) return
+            moveX = e.clientX - startX
+            moveY = e.clientY - startY
+            updateImgTransform()
+        }
+        document.onmouseup = function(){
+            isDrag = false
+            bigImg.style.transition = 'transform 0.05s ease-out'
+        }
+
+        // ========== 滚轮缩放（优化顺滑） ==========
+        bigImg.onwheel = function(e){
+            e.preventDefault()
+            if(e.deltaY < 0){
+                scaleNum += scaleStep
+            }else{
+                scaleNum -= scaleStep
+            }
+            scaleNum = Math.max(minScale, Math.min(maxScale, scaleNum))
+            updateImgTransform()
+        }
+
+        // 搜索
+        input.oninput = function(){
+            let key = this.value.trim()
+            let filter = imgArr.filter(v=>v.name.includes(key))
+            render(filter)
+        }
+    </script>
+</body>
+</html>
